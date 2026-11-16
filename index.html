@@ -1,0 +1,2547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#f3f5f9" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="모임가계부" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="description" content="동호회 수입·지출 장부 — 기간별 잔액, 거래별 잔액, 카톡 공유" />
+<title>모임가계부</title>
+<!-- 단일 파일 번들: styles.css + app.js 인라인 -->
+<style>
+/* ===========================================================
+   모임가계부 — mobile-first stylesheet
+   의존성 없음(웹폰트/CDN 미사용). 오프라인·file:// 에서도 동일하게 보입니다.
+   =========================================================== */
+
+:root {
+  --bg: #f3f5f9;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --line: #e6eaf0;
+  --line-strong: #d7dde7;
+  --text: #101828;
+  --text-2: #475467;
+  --muted: #7b8794;
+  --brand: #1b6ef3;
+  --brand-dark: #1558c8;
+  --brand-weak: #e9f0fe;
+  --income: #0e9f6e;
+  --income-weak: #e6f6ef;
+  --expense: #f04452;
+  --expense-weak: #fdebed;
+  --radius-lg: 18px;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 10px 28px rgba(16, 24, 40, 0.07);
+  --shadow-lg: 0 -8px 40px rgba(16, 24, 40, 0.16);
+  --tap: 44px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body { margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic",
+    "맑은 고딕", "Noto Sans KR", "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+[hidden] { display: none !important; }
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: 16px; /* iOS 확대 방지 */
+  color: inherit;
+}
+
+button { cursor: pointer; border: 0; background: none; padding: 0; }
+
+h1, h2, h3, p { margin: 0; }
+
+/* ---------- app shell ---------- */
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--bg);
+  position: relative;
+}
+
+.appbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top);
+}
+
+.appbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px 10px;
+}
+
+.brand { display: flex; flex-direction: column; min-width: 0; }
+.brand-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brand-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.brand-sub.is-admin { color: var(--brand); font-weight: 600; }
+
+.appbar-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+
+.icon-btn {
+  width: var(--tap);
+  height: var(--tap);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  transition: background 0.15s ease;
+}
+.icon-btn:active { background: var(--surface-2); }
+.icon-btn svg { width: 21px; height: 21px; display: block; }
+
+#btn-admin-unlock {
+  width: auto;
+  padding: 0 12px;
+  height: 34px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--line-strong);
+  color: var(--text-2);
+}
+
+/* ---------- club tabs ---------- */
+.club-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.club-tabs::-webkit-scrollbar { display: none; }
+
+.club-tab {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.club-tab.is-active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+.club-tab.is-add {
+  color: var(--brand);
+  background: var(--brand-weak);
+  border-color: transparent;
+  font-weight: 700;
+  width: 34px;
+  padding: 0;
+  font-size: 18px;
+}
+
+/* ---------- notice ---------- */
+.notice {
+  margin: 10px 14px 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #fff8e6;
+  border: 1px solid #f6e3a8;
+  color: #7a5b00;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.notice.is-error { background: #fdebed; border-color: #f6c3c8; color: #a4232c; }
+.notice.is-info { background: var(--brand-weak); border-color: #cddffd; color: #17458f; }
+.notice-row { display: flex; align-items: flex-start; gap: 8px; }
+.notice-text { flex: 1; }
+.notice-btn {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: underline;
+  padding: 2px 2px;
+}
+.notice-close {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 15px;
+  line-height: 1;
+  color: inherit;
+  opacity: 0.6;
+}
+
+/* ---------- main ---------- */
+.main { padding: 10px 14px 120px; }
+
+.period-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 2px 10px; }
+.period-range { font-size: 14px; font-weight: 600; color: var(--text); }
+.period-range.is-all { color: var(--brand); }
+.period-toggle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+
+.period-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px;
+  margin: 0 0 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+.chip.is-active { background: var(--brand-weak); border-color: #bcd4fb; color: var(--brand-dark); }
+
+.range-inputs { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.range-inputs input[type="date"] {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 14px;
+}
+.range-inputs .tilde { color: var(--muted); }
+
+.btn-mini {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  background: var(--brand);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+/* ---------- summary ---------- */
+.summary-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 16px 16px 14px;
+}
+.summary-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.summary-label { font-size: 13px; font-weight: 600; color: var(--text-2); }
+.summary-note { font-size: 11.5px; color: var(--muted); }
+.summary-balance {
+  display: block;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 1px 0 12px;
+  font-variant-numeric: tabular-nums;
+}
+.summary-balance.is-negative { color: var(--expense); }
+
+.ratio-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  background: #eef1f5;
+  overflow: hidden;
+}
+.ratio-seg { height: 100%; width: 0; transition: width 0.25s ease; }
+.ratio-expense { background: var(--expense); }
+.ratio-income { background: var(--income); }
+
+.summary-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; color: var(--text-2); }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.legend-expense .legend-dot { background: var(--expense); }
+.legend-income .legend-dot { background: var(--income); }
+.legend-item b { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+.legend-expense b { color: var(--expense); }
+.legend-income b { color: var(--income); }
+.legend-pct { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+
+/* ---------- list ---------- */
+.list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 18px 2px 8px;
+}
+.list-title { font-size: 14px; font-weight: 700; }
+.list-count { font-size: 12px; color: var(--muted); font-weight: 600; }
+
+.tx-list {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.tx-list:empty { display: none; }
+
+.tx-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  min-height: 56px;
+}
+.tx-row:last-child { border-bottom: 0; }
+.tx-row:active { background: var(--surface-2); }
+.tx-row.is-static:active { background: var(--surface); }
+
+.tx-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tx-date { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tx-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-sub { font-size: 11.5px; color: var(--muted); }
+
+.tx-amt { text-align: right; flex: none; display: flex; flex-direction: column; gap: 2px; }
+.tx-amount {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tx-amount.is-expense { color: var(--expense); }
+.tx-amount.is-income { color: var(--income); }
+.tx-balance { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.tx-row.is-opening { background: var(--surface-2); }
+.tx-row.is-opening .tx-title { color: var(--text-2); font-weight: 600; }
+
+.empty {
+  padding: 34px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13.5px;
+  background: var(--surface);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- bottom action bar ---------- */
+.bottombar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 100%;
+  max-width: 480px;
+  padding: 18px 14px calc(12px + env(safe-area-inset-bottom));
+  z-index: 30;
+  background: linear-gradient(to top, var(--bg) 58%, rgba(243, 245, 249, 0));
+  pointer-events: none;
+}
+.bottombar .btn {
+  width: 100%;
+  height: 50px;
+  border-radius: 14px;
+  pointer-events: auto;
+  box-shadow: 0 8px 20px rgba(27, 110, 243, 0.28);
+}
+.bottombar .btn svg { width: 18px; height: 18px; }
+
+/* ---------- modal / sheet ---------- */
+.modal { position: fixed; inset: 0; z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.45);
+  animation: fade-in 0.18s ease;
+}
+.sheet {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: 22px 22px 0 0;
+  box-shadow: var(--shadow-lg);
+  animation: slide-up 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@keyframes slide-up { from { transform: translateY(18px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+@media (min-width: 520px) {
+  .modal { align-items: center; }
+  .sheet { border-radius: 20px; max-height: 86vh; }
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 12px 10px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.sheet-head h2 { font-size: 16.5px; font-weight: 700; letter-spacing: -0.02em; }
+.sheet-body { padding: 14px 18px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.sheet-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px calc(14px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+/* ---------- form ---------- */
+.seg {
+  display: flex;
+  padding: 3px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+.seg-btn {
+  flex: 1;
+  height: 38px;
+  border-radius: 9px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--text-2);
+}
+.seg-btn.is-active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+.seg-btn[data-type="expense"].is-active { color: var(--expense); }
+.seg-btn[data-type="income"].is-active { color: var(--income); }
+
+.field { display: block; margin-bottom: 12px; }
+.field > span { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
+.field input[type="text"],
+.field input[type="number"],
+.field input[type="date"],
+.field input[type="email"],
+.field input[type="password"],
+.field select,
+.field textarea,
+.input {
+  width: 100%;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+  font-size: 16px;
+  outline: none;
+}
+.field textarea { height: auto; min-height: 96px; padding: 10px 12px; line-height: 1.5; resize: vertical; font-size: 14px; }
+.field input:focus, .field select:focus, .field textarea:focus, .input:focus {
+  border-color: var(--brand);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px rgba(27, 110, 243, 0.12);
+}
+.field-hint { font-size: 11.5px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+
+.field input[type="file"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+  font-size: 13px;
+  color: var(--text-2);
+}
+.field input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}.field-error { color: var(--expense); font-size: 12.5px; font-weight: 600; margin: 2px 0 0; }
+
+.btn {
+  height: 48px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.btn-primary { background: var(--brand); color: #fff; flex: 1; }
+.btn-primary:active { background: var(--brand-dark); }
+.btn-ghost { background: var(--surface-2); color: var(--text-2); border: 1px solid var(--line-strong); }
+.btn-danger { background: var(--expense-weak); color: #b3202c; border: 1px solid #f3c2c7; }
+.btn-block { width: 100%; flex: none; }
+.btn-sm { height: 38px; padding: 0 14px; border-radius: 10px; font-size: 13.5px; }
+
+/* ---------- settings ---------- */
+.section { margin-bottom: 20px; }
+.section:last-child { margin-bottom: 4px; }
+.section-title { font-size: 13px; font-weight: 700; color: var(--text-2); margin: 0 0 8px; }
+.row-2 { display: flex; gap: 8px; }
+.row-2 > * { flex: 1; }
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  border: 1px solid var(--line);
+}
+.status-pill.is-ok { background: var(--income-weak); color: #0a7a54; border-color: #bfe8d8; }
+.status-pill.is-warn { background: #fff8e6; color: #7a5b00; border-color: #f6e3a8; }
+.status-pill.is-off { background: var(--surface-2); color: var(--muted); }
+
+.club-manage { display: flex; flex-direction: column; gap: 6px; }
+.club-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.club-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.club-manage-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.club-manage-meta { font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.share-preview {
+  width: 100%;
+  min-height: 168px;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: inherit;
+  white-space: pre-wrap;
+  resize: vertical;
+  color: var(--text);
+}
+.url-box {
+  width: 100%;
+  height: 42px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+/* ---------- toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(6px);
+  z-index: 80;
+  max-width: 88vw;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(16, 24, 40, 0.92);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+.toast.is-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- mode switching ---------- */
+body[data-mode="share"] .admin-only { display: none !important; }
+body[data-mode="admin"] .share-only { display: none !important; }
+body[data-mode="share"] .bottombar { display: none; }
+
+/* ---------- desktop breathing room ---------- */
+@media (min-width: 560px) {
+  body { background: #e9edf4; }
+  .app { box-shadow: 0 0 60px rgba(16, 24, 40, 0.08); min-height: 100vh; }
+}
+
+/* ---------- print (장부 출력) ---------- */
+@media print {
+  .appbar, .bottombar, .period-toggle, .period-panel, .icon-btn, .notice, .toast { display: none !important; }
+  body { background: #fff; }
+  .app { max-width: none; box-shadow: none; }
+  .summary-card, .tx-list { box-shadow: none; }
+}
+
+</style>
+</head>
+<body data-mode="admin">
+<div class="app" id="app">
+
+  <header class="appbar">
+    <div class="appbar-row">
+      <div class="brand">
+        <h1 class="brand-title" id="brand-title">모임가계부</h1>
+        <span class="brand-sub" id="brand-sub">총무 모드</span>
+      </div>
+      <div class="appbar-actions">
+        <button class="icon-btn" id="btn-share" type="button" aria-label="공유하기" title="공유하기">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle>
+            <path d="M8.6 10.7l6.8-3.9M8.6 13.3l6.8 3.9"></path>
+          </svg>
+        </button>
+        <button class="icon-btn admin-only" id="btn-settings" type="button" aria-label="설정" title="설정">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3.2"></circle>
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 8.9 19.3a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.7 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.7 8.9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.7a1.7 1.7 0 0 0 1.03-1.56V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.7a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.3 9v.09A1.7 1.7 0 0 0 20.86 10H21a2 2 0 1 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15z"></path>
+          </svg>
+        </button>
+        <button class="icon-btn share-only" id="btn-admin-unlock" type="button">관리자</button>
+      </div>
+    </div>
+    <nav class="club-tabs" id="club-tabs" aria-label="모임 선택"></nav>
+  </header>
+
+  <div class="notice" id="notice" hidden>
+    <div class="notice-row">
+      <span class="notice-text" id="notice-text"></span>
+      <button class="notice-btn" id="notice-action" type="button" hidden></button>
+      <button class="notice-close" id="notice-close" type="button" aria-label="알림 닫기">×</button>
+    </div>
+  </div>
+
+  <main class="main">
+    <div class="period-bar">
+      <span class="period-range" id="period-range">전체 기간</span>
+      <button class="period-toggle" id="period-toggle" type="button">기간 설정</button>
+    </div>
+
+    <div class="period-panel" id="period-panel" hidden>
+      <div class="chips" id="period-chips">
+        <button class="chip" type="button" data-range="1">1개월</button>
+        <button class="chip" type="button" data-range="3">3개월</button>
+        <button class="chip" type="button" data-range="6">6개월</button>
+        <button class="chip" type="button" data-range="all">전체</button>
+        <button class="chip" type="button" data-range="custom">직접 지정</button>
+      </div>
+      <div class="range-inputs" id="range-inputs" hidden>
+        <input type="date" id="range-from" aria-label="시작일" />
+        <span class="tilde">~</span>
+        <input type="date" id="range-to" aria-label="종료일" />
+        <button class="btn-mini" id="btn-apply-range" type="button">적용</button>
+      </div>
+    </div>
+
+    <section class="summary-card" aria-label="잔액 요약">
+      <div class="summary-head">
+        <span class="summary-label">잔액</span>
+        <span class="summary-note" id="summary-note"></span>
+      </div>
+      <strong class="summary-balance" id="summary-balance">0원</strong>
+      <div class="ratio-bar">
+        <div class="ratio-seg ratio-expense" id="ratio-expense"></div>
+        <div class="ratio-seg ratio-income" id="ratio-income"></div>
+      </div>
+      <div class="summary-legend">
+        <span class="legend-item legend-expense">
+          <span class="legend-dot"></span>지출 <b id="sum-expense">0원</b>
+          <span class="legend-pct" id="pct-expense"></span>
+        </span>
+        <span class="legend-item legend-income">
+          <span class="legend-dot"></span>수입 <b id="sum-income">0원</b>
+          <span class="legend-pct" id="pct-income"></span>
+        </span>
+      </div>
+    </section>
+
+    <div class="list-head">
+      <h2 class="list-title">수입/지출 내역</h2>
+      <span class="list-count" id="list-count"></span>
+    </div>
+    <div class="tx-list" id="tx-list"></div>
+    <p class="empty" id="empty-state" hidden>이 기간에는 내역이 없습니다.</p>
+  </main>
+
+  <div class="bottombar admin-only">
+    <button class="btn btn-primary" id="btn-add" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true">
+        <path d="M12 5v14M5 12h14"></path>
+      </svg>
+      내역 추가
+    </button>
+  </div>
+</div>
+
+<!-- ============ 내역 추가/수정 ============ -->
+<div class="modal" id="modal-tx" hidden>
+  <div class="modal-backdrop" data-close="modal-tx"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="tx-modal-title">
+    <div class="sheet-head">
+      <h2 id="tx-modal-title">내역 추가</h2>
+      <button class="icon-btn" type="button" data-close="modal-tx" aria-label="닫기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <div class="seg" id="tx-type-seg">
+        <button class="seg-btn is-active" type="button" data-type="expense">지출</button>
+        <button class="seg-btn" type="button" data-type="income">수입</button>
+      </div>
+      <label class="field">
+        <span>날짜</span>
+        <input type="date" id="tx-date" />
+      </label>
+      <label class="field">
+        <span>내용</span>
+        <input type="text" id="tx-title" maxlength="40" placeholder="예: 셔틀콕구매, 지원금" autocomplete="off" />
+      </label>
+      <label class="field">
+        <span>금액</span>
+        <input type="number" id="tx-amount" inputmode="numeric" min="0" step="1" placeholder="0" />
+        <p class="field-hint">원 단위로 입력하세요. (예: 300000)</p>
+      </label>
+      <p class="field-error" id="tx-error" hidden></p>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn btn-danger" id="btn-tx-delete" type="button" hidden>삭제</button>
+      <button class="btn btn-primary" id="btn-tx-save" type="button">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 설정 ============ -->
+<div class="modal" id="modal-settings" hidden>
+  <div class="modal-backdrop" data-close="modal-settings"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+    <div class="sheet-head">
+      <h2 id="settings-title">설정</h2>
+      <button class="icon-btn" type="button" data-close="modal-settings" aria-label="닫기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+
+      <div class="section">
+        <h3 class="section-title">모임 관리</h3>
+        <div class="club-manage" id="club-manage"></div>
+        <div class="row-2" style="margin-top:8px">
+          <button class="btn btn-ghost btn-sm" id="btn-add-club" type="button">+ 모임 추가</button>
+          <button class="btn btn-ghost btn-sm" id="btn-edit-club" type="button">현재 모임 수정</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">저장 방식</h3>
+        <p style="margin-bottom:8px"><span class="status-pill is-off" id="cloud-status">로컬 저장</span></p>
+        <label class="field">
+          <span>Supabase URL</span>
+          <input type="text" id="set-url" placeholder="https://xxxx.supabase.co" autocomplete="off" autocapitalize="off" spellcheck="false" />
+        </label>
+        <label class="field">
+          <span>Supabase anon key</span>
+          <input type="password" id="set-key" placeholder="eyJhbGciOi..." autocomplete="off" />
+        </label>
+        <div class="row-2" style="margin-bottom:12px">
+          <label class="field" style="margin:0">
+            <span>관리자 이메일</span>
+            <input type="email" id="set-email" placeholder="admin@example.com" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          </label>
+          <label class="field" style="margin:0">
+            <span>비밀번호</span>
+            <input type="password" id="set-password" placeholder="••••••••" autocomplete="off" />
+          </label>
+        </div>
+        <div class="row-2">
+          <button class="btn btn-ghost btn-sm" id="btn-cloud-login" type="button">관리자 로그인</button>
+          <button class="btn btn-ghost btn-sm" id="btn-save-settings" type="button">연결 저장</button>
+        </div>
+        <p class="field-hint">비밀번호는 저장하지 않습니다(로그인 세션만 유지). Supabase를 연결하면 회원이 공유 링크로 같은 장부를 볼 수 있습니다.</p>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">공유 · 보안</h3>
+        <label class="field">
+          <span>관리자 PIN (4자리)</span>
+          <input type="text" id="set-pin" inputmode="numeric" maxlength="4" placeholder="1234" autocomplete="off" />
+          <p class="field-hint">공유 화면에서 입력란을 여는 잠금장치입니다. 실제 저장 권한은 Supabase RLS가 막습니다.</p>
+        </label>
+      </div>
+
+      <div class="section">
+        <h3 class="section-title">백업</h3>
+        <div class="row-2" style="margin-bottom:8px">
+          <button class="btn btn-ghost btn-sm" id="btn-export-json" type="button">JSON 내보내기</button>
+          <button class="btn btn-ghost btn-sm" id="btn-export-csv" type="button">CSV 내보내기</button>
+        </div>
+        <label class="field" style="margin-bottom:8px">
+          <span>가져오기 (JSON · CSV)</span>
+          <input type="file" id="import-file" accept=".json,.csv,application/json,text/csv" />
+        </label>
+        <div class="row-2">
+          <button class="btn btn-ghost btn-sm" id="btn-reset-clear" type="button">내역 전체 비우기</button>
+          <button class="btn btn-ghost btn-sm" id="btn-reset-sample" type="button">샘플로 되돌리기</button>
+        </div>
+      </div>
+
+    </div>
+    <div class="sheet-foot">
+      <button class="btn btn-primary" type="button" data-close="modal-settings">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 모임 추가/수정 ============ -->
+<div class="modal" id="modal-club" hidden>
+  <div class="modal-backdrop" data-close="modal-club"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="club-modal-title">
+    <div class="sheet-head">
+      <h2 id="club-modal-title">모임 추가</h2>
+      <button class="icon-btn" type="button" data-close="modal-club" aria-label="닫기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <label class="field">
+        <span>모임 이름</span>
+        <input type="text" id="club-name" maxlength="30" placeholder="예: 골프동호회" autocomplete="off" />
+      </label>
+      <label class="field">
+        <span>이월 잔액</span>
+        <input type="number" id="club-opening" inputmode="numeric" min="0" step="1" placeholder="0" />
+        <p class="field-hint">장부 시작 시점의 잔액입니다. 이미 쓰던 모임이면 지금 잔액을 넣고 시작하면 됩니다.</p>
+      </label>
+      <label class="field">
+        <span>이월 기준일</span>
+        <input type="date" id="club-opening-date" />
+      </label>
+      <p class="field-error" id="club-error" hidden></p>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn btn-danger" id="btn-club-delete" type="button" hidden>모임 삭제</button>
+      <button class="btn btn-primary" id="btn-club-save" type="button">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 공유하기 ============ -->
+<div class="modal" id="modal-share" hidden>
+  <div class="modal-backdrop" data-close="modal-share"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="share-modal-title">
+    <div class="sheet-head">
+      <h2 id="share-modal-title">공유하기</h2>
+      <button class="icon-btn" type="button" data-close="modal-share" aria-label="닫기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <h3 class="section-title">카톡으로 보낼 요약</h3>
+      <textarea class="share-preview" id="share-text" readonly></textarea>
+      <div class="row-2" style="margin:10px 0 18px">
+        <button class="btn btn-ghost btn-sm" id="btn-copy-text" type="button">요약 복사</button>
+        <button class="btn btn-ghost btn-sm" id="btn-share-sheet" type="button">카톡·문자로 보내기</button>
+      </div>
+
+      <h3 class="section-title">읽기 전용 공유 링크</h3>
+      <input class="url-box" id="share-url" type="text" readonly />
+      <div class="row-2" style="margin-top:8px">
+        <button class="btn btn-ghost btn-sm" id="btn-copy-url" type="button">링크 복사</button>
+        <button class="btn btn-ghost btn-sm" id="btn-open-share" type="button">공유 화면 미리보기</button>
+      </div>
+      <p class="field-hint" id="share-hint"></p>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn btn-primary" type="button" data-close="modal-share">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PIN ============ -->
+<div class="modal" id="modal-pin" hidden>
+  <div class="modal-backdrop" data-close="modal-pin"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pin-title">
+    <div class="sheet-head">
+      <h2 id="pin-title">관리자 PIN</h2>
+      <button class="icon-btn" type="button" data-close="modal-pin" aria-label="닫기">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div class="sheet-body">
+      <label class="field">
+        <span>PIN 4자리</span>
+        <input type="password" id="pin-input" inputmode="numeric" maxlength="4" autocomplete="off" />
+      </label>
+      <p class="field-error" id="pin-error" hidden>PIN이 맞지 않습니다.</p>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn btn-primary" id="btn-pin-ok" type="button">확인</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =============================================================================
+ * 모임가계부 (Moim Ledger) — app.js
+ * 순수 바닐라 JS. 프레임워크·CDN·빌드 없이 동작합니다.
+ * 저장: Supabase(설정 시) + localStorage(항상 미러링)
+ * ============================================================================= */
+(function () {
+  'use strict';
+
+  var STATE_KEY = 'moimledger.state.v1';
+  var CONFIG_KEY = 'moimledger.config.v1';
+  var SESSION_KEY = 'moimledger.session.v1';
+  var APP_VERSION = 1;
+  var PALETTE = ['#1B6EF3', '#0E9F6E', '#E8590C', '#7C3AED', '#0891B2', '#DB2777'];
+  var DEFAULT_PIN = '1234';
+
+  var state = null;
+  var cfg = { url: '', key: '', email: '', pin: DEFAULT_PIN };
+  var runtime = {
+    mode: 'local',      // 'local' | 'cloud'
+    view: 'admin',      // 'admin' | 'share'
+    token: '',          // Supabase access token (관리자 로그인 시)
+    editingTx: null,
+    editingClub: null,
+    txType: 'expense',
+    periodOpen: false,
+    notice: null
+  };
+
+  /* ---------------------------------------------------------------------------
+   * 1. 유틸
+   * ------------------------------------------------------------------------- */
+  function $(id) { return document.getElementById(id); }
+
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function parseISO(iso) {
+    var p = String(iso || '').split('-');
+    if (p.length !== 3) return null;
+    var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+    if (isNaN(d.getTime())) return null;
+    return d;
+  }
+
+  function addMonths(iso, months) {
+    var d = parseISO(iso);
+    if (!d) return iso;
+    var day = d.getDate();
+    d.setDate(1);
+    d.setMonth(d.getMonth() + months);
+    var last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, last));
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function fmtDot(iso) { return String(iso || '').replace(/-/g, '.'); }
+
+  function fmtShort(iso) {
+    var p = String(iso || '').split('-');
+    if (p.length !== 3) return String(iso || '');
+    return p[1] + '.' + p[2];
+  }
+
+  function fmtNum(n) {
+    var v = Math.round(Number(n || 0));
+    var s = String(Math.abs(v));
+    var out = '';
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 === 0) out += ',';
+      out += s.charAt(i);
+    }
+    return (v < 0 ? '-' : '') + out;
+  }
+
+  function fmtWon(n) { return fmtNum(n) + '원'; }
+
+  function num(v) {
+    var n = Number(String(v == null ? '' : v).replace(/[^0-9.-]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+
+  function uuid() {
+    function rnd() { return Math.floor(Math.random() * 16).toString(16); }
+    var s = '';
+    for (var i = 0; i < 32; i++) {
+      if (i === 8 || i === 12 || i === 16 || i === 20) s += '-';
+      if (i === 12) s += '4';
+      else if (i === 16) s += '89ab'.charAt(Math.floor(Math.random() * 4));
+      else s += rnd();
+    }
+    return s;
+  }
+
+  function shortSlug() {
+    var chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+    var s = '';
+    for (var i = 0; i < 6; i++) s += chars.charAt(Math.floor(Math.random() * chars.length));
+    return s;
+  }
+
+  function h(tag, props, children) {
+    var el = document.createElement(tag);
+    if (props) {
+      for (var k in props) {
+        if (!Object.prototype.hasOwnProperty.call(props, k)) continue;
+        var v = props[k];
+        if (v == null || v === false) continue;
+        if (k === 'class') el.className = v;
+        else if (k === 'text') el.textContent = v;
+        else if (k === 'dataset') { for (var dk in v) { if (Object.prototype.hasOwnProperty.call(v, dk)) el.dataset[dk] = v[dk]; } }
+        else if (k.indexOf('on') === 0 && typeof v === 'function') el.addEventListener(k.slice(2).toLowerCase(), v);
+        else el.setAttribute(k, v);
+      }
+    }
+    if (children) {
+      for (var i = 0; i < children.length; i++) {
+        var c = children[i];
+        if (c == null || c === false) continue;
+        el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c);
+      }
+    }
+    return el;
+  }
+
+  function clear(el) { if (el) el.textContent = ''; }
+
+  var toastTimer = null;
+  function toast(msg) {
+    var t = $('toast');
+    if (!t) return;
+    t.textContent = msg;
+    t.hidden = false;
+    t.classList.add('is-show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.classList.remove('is-show'); }, 2400);
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return legacyCopy(text); });
+    }
+    return Promise.resolve(legacyCopy(text));
+  }
+
+  function legacyCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', 'readonly');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand ? document.execCommand('copy') : false;
+      document.body.removeChild(ta);
+      return !!ok;
+    } catch (e) { return false; }
+  }
+
+  function download(filename, text, mime) {
+    try {
+      if (typeof Blob === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) {
+        toast('이 브라우저에서는 파일 저장을 지원하지 않습니다.');
+        return;
+      }
+      var blob = new Blob([text], { type: (mime || 'text/plain') + ';charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.setAttribute('download', filename);
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        try { document.body.removeChild(a); } catch (e) {}
+        URL.revokeObjectURL(url);
+      }, 1500);
+    } catch (e) {
+      toast('파일 저장 실패: ' + (e && e.message ? e.message : '알 수 없는 오류'));
+    }
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 2. 초기 데이터
+   *     배드민턴 동호회 : 2026-11-14 임총무 공유 페이지에서 실측한 7건 그대로
+   *     골프동호회      : 2026-11-14 기준 잔액(978,993원)만 확인되어 이월 잔액으로 인계
+   * ------------------------------------------------------------------------- */
+  function seedState() {
+    var golfId = uuid();
+    var badId = uuid();
+    var now = new Date().toISOString();
+
+    var golf = {
+      id: golfId, slug: 'golf', name: '골프동호회', color: PALETTE[0],
+      openingBalance: 978993, openingDate: '2026-11-15',
+      shareToken: shortSlug(), createdAt: now
+    };
+    var bad = {
+      id: badId, slug: 'badminton', name: '배드민턴 동호회', color: PALETTE[1],
+      openingBalance: 1225190, openingDate: '2026-08-14',
+      shareToken: shortSlug(), createdAt: now
+    };
+
+    var badRows = [
+      ['2026-08-25', '셔틀콕구매', 'expense', 203000],
+      ['2026-09-10', '지원금', 'income', 200000],
+      ['2026-09-16', '선물', 'expense', 331100],
+      ['2026-10-07', '셔틀콕구매', 'expense', 75000],
+      ['2026-10-12', '지원금', 'income', 200000],
+      ['2026-11-10', '지원금', 'income', 200000],
+      ['2026-11-11', '셔틀콕구매', 'expense', 300000]
+    ];
+
+    var txs = [];
+    for (var i = 0; i < badRows.length; i++) {
+      var r = badRows[i];
+      txs.push({
+        id: uuid(), clubId: badId, date: r[0], title: r[1], type: r[2],
+        amount: r[3], createdAt: now
+      });
+    }
+
+    return {
+      version: APP_VERSION,
+      seededAt: '2026-11-15',
+      clubs: [golf, bad],
+      txs: txs,
+      activeClubId: badId,
+      period: { kind: '3', from: '', to: '' },
+      queue: []
+    };
+  }
+
+  function blankState() {
+    var c = {
+      id: uuid(), slug: 'club-' + shortSlug(), name: '새 모임', color: PALETTE[0],
+      openingBalance: 0, openingDate: todayISO(), shareToken: shortSlug(),
+      createdAt: new Date().toISOString()
+    };
+    return {
+      version: APP_VERSION, seededAt: '', clubs: [c], txs: [],
+      activeClubId: c.id, period: { kind: 'all', from: '', to: '' }, queue: []
+    };
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 3. 저장 (localStorage · config)
+   * ------------------------------------------------------------------------- */
+  function readJSON(key) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) { return null; }
+  }
+
+  function writeJSON(key, value) {
+    try { window.localStorage.setItem(key, JSON.stringify(value)); return true; }
+    catch (e) { return false; }
+  }
+
+  function loadConfig() {
+    var c = readJSON(CONFIG_KEY);
+    cfg = {
+      url: (c && c.url) || '',
+      key: (c && c.key) || '',
+      email: (c && c.email) || '',
+      pin: (c && c.pin) || DEFAULT_PIN
+    };
+    var s = readJSON(SESSION_KEY);
+    if (s && s.token) runtime.token = s.token;
+  }
+
+  function saveConfig() { writeJSON(CONFIG_KEY, cfg); }
+
+  function normalizeState(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    var st = {
+      version: APP_VERSION,
+      seededAt: raw.seededAt || '',
+      clubs: Array.isArray(raw.clubs) ? raw.clubs : [],
+      txs: Array.isArray(raw.txs) ? raw.txs : [],
+      activeClubId: raw.activeClubId || null,
+      period: raw.period && raw.period.kind ? raw.period : { kind: 'all', from: '', to: '' },
+      queue: Array.isArray(raw.queue) ? raw.queue : []
+    };
+    st.clubs = st.clubs.map(function (c) {
+      return {
+        id: c.id || uuid(),
+        slug: c.slug || 'club-' + shortSlug(),
+        name: c.name || '모임',
+        color: c.color || PALETTE[0],
+        openingBalance: num(c.openingBalance),
+        openingDate: c.openingDate || '',
+        shareToken: c.shareToken || shortSlug(),
+        createdAt: c.createdAt || new Date().toISOString()
+      };
+    });
+    st.txs = st.txs.map(function (t) {
+      return {
+        id: t.id || uuid(),
+        clubId: t.clubId || t.club_id || '',
+        date: t.date || t.tx_date || todayISO(),
+        title: t.title || '',
+        type: t.type === 'income' ? 'income' : 'expense',
+        amount: Math.abs(num(t.amount)),
+        createdAt: t.createdAt || new Date().toISOString()
+      };
+    });
+    return st;
+  }
+
+  function saveState() {
+    if (!state) return;
+    var payload = {
+      version: APP_VERSION, seededAt: state.seededAt,
+      clubs: state.clubs, txs: state.txs,
+      activeClubId: state.activeClubId, period: state.period,
+      queue: state.queue
+    };
+    writeJSON(STATE_KEY, payload);
+  }
+
+  function loadLocal(seedIfEmpty) {
+    var raw = readJSON(STATE_KEY);
+    var st = normalizeState(raw);
+    if (!st && seedIfEmpty) st = seedState();
+    if (!st) st = blankState();
+    state = st;
+    ensureActiveClub();
+    return state;
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 4. Supabase (PostgREST + Auth)
+   * ------------------------------------------------------------------------- */
+  function apiBase() { return String(cfg.url).replace(/\/+$/, '') + '/rest/v1'; }
+  function authBase() { return String(cfg.url).replace(/\/+$/, '') + '/auth/v1'; }
+
+  function apiHeaders() {
+    var headers = { apikey: cfg.key, 'Content-Type': 'application/json' };
+    headers.Authorization = 'Bearer ' + (runtime.token || cfg.key);
+    return headers;
+  }
+
+  function errText(status, body) {
+    var msg = '';
+    try {
+      var j = JSON.parse(body);
+      msg = j.message || j.msg || j.error_description || j.hint || '';
+    } catch (e) { msg = String(body || ''); }
+    return 'HTTP ' + status + (msg ? ' · ' + msg : '');
+  }
+
+  async function fetchJson(url, init) {
+    var res;
+    try { res = await fetch(url, init); }
+    catch (e) { throw new Error('네트워크 오류: ' + (e && e.message ? e.message : '연결 실패')); }
+    var body = await res.text();
+    if (!res.ok) throw new Error(errText(res.status, body));
+    if (!body) return null;
+    try { return JSON.parse(body); } catch (e) { return null; }
+  }
+
+  function clubFromRow(r) {
+    return {
+      id: r.id, slug: r.slug, name: r.name, color: r.color || PALETTE[0],
+      openingBalance: num(r.opening_balance), openingDate: r.opening_date || '',
+      shareToken: r.share_token || '', createdAt: r.created_at || ''
+    };
+  }
+
+  function clubToRow(c) {
+    return {
+      id: c.id, slug: c.slug, name: c.name, color: c.color,
+      opening_balance: Math.round(Number(c.openingBalance || 0)),
+      opening_date: c.openingDate || null,
+      share_token: c.shareToken || shortSlug()
+    };
+  }
+
+  function txFromRow(r) {
+    return {
+      id: r.id, clubId: r.club_id, date: r.tx_date, title: r.title,
+      type: r.type === 'income' ? 'income' : 'expense',
+      amount: Math.abs(num(r.amount)), createdAt: r.created_at || ''
+    };
+  }
+
+  function txToRow(t) {
+    return {
+      id: t.id, club_id: t.clubId, tx_date: t.date, title: t.title,
+      type: t.type, amount: Math.round(Math.abs(Number(t.amount || 0)))
+    };
+  }
+
+  async function cloudLoad() {
+    var clubs = await fetchJson(apiBase() + '/clubs?select=*&order=created_at.asc', { headers: apiHeaders() });
+    var txs = await fetchJson(apiBase() + '/transactions?select=*&order=tx_date.asc&limit=5000', { headers: apiHeaders() });
+    state.clubs = (clubs || []).map(clubFromRow);
+    state.txs = (txs || []).map(txFromRow);
+    ensureActiveClub();
+  }
+
+  function restWrite(op, payload) {
+    var url, init;
+    var headers = apiHeaders();
+    if (op === 'insert' || op === 'upsert') {
+      url = apiBase() + '/' + payload.table;
+      var h2 = Object.assign({}, headers);
+      h2.Prefer = op === 'upsert' ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal';
+      init = { method: 'POST', headers: h2, body: JSON.stringify(payload.row) };
+    } else if (op === 'update') {
+      url = apiBase() + '/' + payload.table + '?id=eq.' + encodeURIComponent(payload.id);
+      init = { method: 'PATCH', headers: headers, body: JSON.stringify(payload.row) };
+    } else if (op === 'delete') {
+      url = apiBase() + '/' + payload.table + '?id=eq.' + encodeURIComponent(payload.id);
+      init = { method: 'DELETE', headers: headers };
+    } else {
+      return Promise.reject(new Error('알 수 없는 작업: ' + op));
+    }
+    return fetchJson(url, init);
+  }
+
+  /*
+   * 쓰기는 로컬에 먼저 반영하고 클라우드로 밀어 넣는다.
+   * 클라우드가 실패하면 queue 에 쌓아 두고 [다시 시도] 로 재전송한다.
+   */
+  function push(op, payload) {
+    if (runtime.mode !== 'cloud' || !cfg.url || !cfg.key) return;
+    restWrite(op, payload).catch(function (e) {
+      state.queue.push(Object.assign({ op: op }, payload));
+      saveState();
+      setNotice({
+        kind: 'error',
+        text: '클라우드 저장 실패(' + (e.message || e) + '). 이 기기에만 저장돼 있어요.',
+        action: { label: '다시 시도', run: retryQueue }
+      });
+      renderNotice();
+    });
+  }
+
+  async function retryQueue() {
+    if (!state.queue.length) return;
+    var remaining = [];
+    for (var i = 0; i < state.queue.length; i++) {
+      var item = state.queue[i];
+      try {
+        // 삽입은 upsert 로 재전송해 같은 id 로 두 번 넣어도 중복되지 않게 한다
+        await restWrite(item.op === 'insert' ? 'upsert' : item.op, item);
+      } catch (e) {
+        remaining.push(item);
+      }
+    }
+    state.queue = remaining;
+    saveState();
+    if (remaining.length) {
+      toast('아직 ' + remaining.length + '건이 전송되지 않았습니다.');
+    } else {
+      toast('미전송 내역을 모두 저장했습니다.');
+      clearNotice();
+    }
+    renderAll();
+  }
+
+  async function pushAllLocal() {
+    if (!cfg.url || !cfg.key) { toast('먼저 Supabase를 연결하세요.'); return; }
+    try {
+      for (var i = 0; i < state.clubs.length; i++) {
+        await restWrite('upsert', { table: 'clubs', row: clubToRow(state.clubs[i]) });
+      }
+      for (var j = 0; j < state.txs.length; j++) {
+        await restWrite('upsert', { table: 'transactions', row: txToRow(state.txs[j]) });
+      }
+      toast('클라우드에 올렸습니다.');
+      await cloudLoad();
+      saveState();
+      renderAll();
+    } catch (e) {
+      toast('올리기 실패: ' + (e.message || e));
+    }
+  }
+
+  async function cloudConnect() {
+    if (!cfg.url || !cfg.key) { runtime.mode = 'local'; return; }
+    var prevClubs = state.clubs.slice();
+    var prevTxs = state.txs.slice();
+    try {
+      await cloudLoad();
+      runtime.mode = 'cloud';
+    } catch (e) {
+      runtime.mode = 'local';
+      setNotice({
+        kind: 'error',
+        text: 'Supabase 연결 실패(' + (e.message || e) + '). 이 기기 저장 모드로 동작합니다.',
+        action: { label: '설정', run: openSettings }
+      });
+      return;
+    }
+    if (!state.clubs.length) {
+      state.clubs = prevClubs;
+      state.txs = prevTxs;
+      ensureActiveClub();
+      setNotice({
+        kind: 'info',
+        text: '클라우드가 비어 있습니다. 지금 이 기기의 장부를 올려서 시작할까요?',
+        action: { label: '지금 올리기', run: pushAllLocal }
+      });
+    } else if (state.queue.length) {
+      retryQueue();
+    } else if (!runtime.token && runtime.view === 'admin') {
+      setNotice({
+        kind: 'info',
+        text: '읽기 전용으로 연결됐습니다. 새 내역을 저장하려면 설정에서 관리자 로그인하세요.',
+        action: { label: '설정', run: openSettings }
+      });
+    } else {
+      clearNotice();
+    }
+    saveState();
+  }
+
+  async function cloudLogin() {
+    var email = ($('set-email').value || '').trim();
+    var pw = $('set-password').value || '';
+    cfg.url = ($('set-url').value || '').trim();
+    cfg.key = ($('set-key').value || '').trim();
+    if (!cfg.url || !cfg.key) { toast('Supabase URL과 anon key를 먼저 입력하세요.'); return; }
+    if (!email || !pw) { toast('관리자 이메일과 비밀번호를 입력하세요.'); return; }
+    try {
+      var res = await fetch(authBase() + '/token?grant_type=password', {
+        method: 'POST',
+        headers: { apikey: cfg.key, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: pw })
+      });
+      var body = await res.text();
+      if (!res.ok) throw new Error(errText(res.status, body));
+      var data = JSON.parse(body);
+      runtime.token = data.access_token || '';
+      cfg.email = email;
+      saveConfig();
+      writeJSON(SESSION_KEY, { token: runtime.token, email: email });
+      $('set-password').value = '';
+      toast('관리자 로그인 완료');
+      if (runtime.mode !== 'cloud') await cloudConnect();
+      if (state.queue.length) await retryQueue();
+      renderAll();
+      renderCloudStatus();
+    } catch (e) {
+      toast('로그인 실패: ' + (e.message || e));
+    }
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 5. 계산 (도메인)
+   * ------------------------------------------------------------------------- */
+  function activeClub() {
+    if (!state || !state.clubs.length) return null;
+    var found = null;
+    for (var i = 0; i < state.clubs.length; i++) {
+      if (state.clubs[i].id === state.activeClubId) { found = state.clubs[i]; break; }
+    }
+    return found || state.clubs[0];
+  }
+
+  function ensureActiveClub() {
+    if (!state) return;
+    if (!state.clubs.length) {
+      var c = blankState().clubs[0];
+      state.clubs = [c];
+      state.activeClubId = c.id;
+      state.txs = [];
+      return;
+    }
+    var ok = false;
+    for (var i = 0; i < state.clubs.length; i++) {
+      if (state.clubs[i].id === state.activeClubId) ok = true;
+    }
+    if (!ok) state.activeClubId = state.clubs[0].id;
+  }
+
+  function clubTxs(clubId) {
+    var list = state.txs.filter(function (t) { return t.clubId === clubId; });
+    list.sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      var ca = a.createdAt || '', cb = b.createdAt || '';
+      if (ca !== cb) return ca < cb ? -1 : 1;
+      return a.id < b.id ? -1 : 1;
+    });
+    return list;
+  }
+
+  function periodRange() {
+    var p = state.period || { kind: 'all' };
+    var today = todayISO();
+    if (p.kind === 'all') return { from: null, to: null };
+    if (p.kind === 'custom') return { from: p.from || null, to: p.to || null };
+    var n = Number(p.kind);
+    if (!n || n <= 0) return { from: null, to: null };
+    return { from: addMonths(today, -n), to: today };
+  }
+
+  function inRange(date, range) {
+    if (range.from && date < range.from) return false;
+    if (range.to && date > range.to) return false;
+    return true;
+  }
+
+  function summaryFor(club, range) {
+    var opening = Number(club.openingBalance || 0);
+    var all = clubTxs(club.id);
+    var income = 0, expense = 0, balance = opening;
+    for (var i = 0; i < all.length; i++) {
+      var t = all[i];
+      if (inRange(t.date, range)) {
+        if (t.type === 'income') income += t.amount;
+        else expense += t.amount;
+      }
+      if (!range.to || t.date <= range.to) {
+        balance += (t.type === 'income' ? t.amount : -t.amount);
+      }
+    }
+    return { opening: opening, balance: balance, income: income, expense: expense };
+  }
+
+  function computeBalances(club, txsAsc) {
+    var map = {};
+    var running = Number(club.openingBalance || 0);
+    for (var i = 0; i < txsAsc.length; i++) {
+      var t = txsAsc[i];
+      running += (t.type === 'income' ? t.amount : -t.amount);
+      map[t.id] = running;
+    }
+    return map;
+  }
+
+  function periodTxs(club, range) {
+    return clubTxs(club.id).filter(function (t) { return inRange(t.date, range); });
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 6. 렌더
+   * ------------------------------------------------------------------------- */
+  function renderAll() {
+    if (!state) return;
+    ensureActiveClub();
+    document.body.setAttribute('data-mode', runtime.view === 'share' ? 'share' : 'admin');
+    renderHeader();
+    renderTabs();
+    renderPeriod();
+    renderSummary();
+    renderList();
+    renderNotice();
+  }
+
+  function renderHeader() {
+    var club = activeClub();
+    var title = $('brand-title');
+    var sub = $('brand-sub');
+    title.textContent = club ? club.name : '모임가계부';
+    if (runtime.view === 'share') {
+      sub.textContent = '공유 화면 · 읽기 전용';
+      sub.className = 'brand-sub';
+    } else {
+      sub.textContent = runtime.mode === 'cloud' ? '총무 모드 · 클라우드 동기화' : '총무 모드 · 이 기기 저장';
+      sub.className = 'brand-sub is-admin';
+    }
+  }
+
+  function renderTabs() {
+    var box = $('club-tabs');
+    if (!box) return;
+    clear(box);
+    if (runtime.view === 'share') { box.hidden = true; return; }
+    box.hidden = false;
+    for (var i = 0; i < state.clubs.length; i++) {
+      (function (club) {
+        var btn = h('button', {
+          class: 'club-tab' + (club.id === state.activeClubId ? ' is-active' : ''),
+          type: 'button',
+          text: club.name,
+          onclick: function () {
+            state.activeClubId = club.id;
+            saveState();
+            renderAll();
+          }
+        });
+        box.appendChild(btn);
+      })(state.clubs[i]);
+    }
+    box.appendChild(h('button', {
+      class: 'club-tab is-add admin-only', type: 'button', text: '+',
+      'aria-label': '모임 추가',
+      onclick: function () { openClubModal(null); }
+    }));
+  }
+
+  var RANGE_LABELS = [
+    { kind: '1', label: '1개월' },
+    { kind: '3', label: '3개월' },
+    { kind: '6', label: '6개월' },
+    { kind: 'all', label: '전체' },
+    { kind: 'custom', label: '직접 지정' }
+  ];
+
+  function renderPeriod() {
+    var club = activeClub();
+    if (!club) return;
+    var range = periodRange();
+    var label = $('period-range');
+    if (range.from && range.to) {
+      label.textContent = fmtDot(range.from) + ' - ' + fmtDot(range.to);
+      label.className = 'period-range' + (state.period.kind === 'custom' ? ' is-all' : '');
+    } else if (range.from) {
+      label.textContent = fmtDot(range.from) + ' 이후';
+      label.className = 'period-range is-all';
+    } else {
+      label.textContent = '전체 기간';
+      label.className = 'period-range is-all';
+    }
+
+    var panel = $('period-panel');
+    panel.hidden = !runtime.periodOpen;
+
+    var chips = $('period-chips');
+    clear(chips);
+    for (var i = 0; i < RANGE_LABELS.length; i++) {
+      (function (item) {
+        var active = state.period.kind === item.kind;
+        chips.appendChild(h('button', {
+          class: 'chip' + (active ? ' is-active' : ''),
+          type: 'button',
+          'data-range': item.kind,
+          text: item.label,
+          onclick: function () {
+            if (item.kind === 'custom') {
+              state.period.kind = 'custom';
+              if (!state.period.from) state.period.from = addMonths(todayISO(), -3);
+              if (!state.period.to) state.period.to = todayISO();
+            } else {
+              state.period.kind = item.kind;
+              state.period.from = '';
+              state.period.to = '';
+            }
+            saveState();
+            renderAll();
+          }
+        }));
+      })(RANGE_LABELS[i]);
+    }
+
+    var inputs = $('range-inputs');
+    inputs.hidden = state.period.kind !== 'custom';
+    if (state.period.kind === 'custom') {
+      $('range-from').value = state.period.from || '';
+      $('range-to').value = state.period.to || '';
+    }
+  }
+
+  function renderSummary() {
+    var club = activeClub();
+    if (!club) return;
+    var range = periodRange();
+    var s = summaryFor(club, range);
+    var total = s.income + s.expense;
+
+    var bal = $('summary-balance');
+    bal.textContent = fmtWon(s.balance);
+    bal.className = 'summary-balance' + (s.balance < 0 ? ' is-negative' : '');
+
+    $('summary-note').textContent = (range.to ? fmtDot(range.to) : fmtDot(todayISO())) + ' 기준';
+    $('sum-income').textContent = fmtWon(s.income);
+    $('sum-expense').textContent = fmtWon(s.expense);
+
+    var pe = total ? Math.round((s.expense / total) * 100) : 0;
+    var pi = total ? 100 - pe : 0;
+    $('ratio-expense').style.width = (total ? pe : 0) + '%';
+    $('ratio-income').style.width = (total ? pi : 0) + '%';
+    $('pct-expense').textContent = total ? pe + '%' : '';
+    $('pct-income').textContent = total ? pi + '%' : '';
+  }
+
+  function txRow(club, tx, balance, isStatic) {
+    var sign = tx.type === 'income' ? '+' : '-';
+    return h('button', {
+      class: 'tx-row' + (isStatic ? ' is-static' : ''),
+      type: 'button',
+      'data-id': tx.id,
+      onclick: function () {
+        if (runtime.view !== 'admin') return;
+        openTxModal(tx.id);
+      }
+    }, [
+      h('div', { class: 'tx-main' }, [
+        h('span', { class: 'tx-date', text: tx.date.replace(/-/g, '.') }),
+        h('span', { class: 'tx-title', text: tx.title || '내용 없음' })
+      ]),
+      h('div', { class: 'tx-amt' }, [
+        h('span', {
+          class: 'tx-amount ' + (tx.type === 'income' ? 'is-income' : 'is-expense'),
+          text: sign + fmtNum(tx.amount) + ' 원'
+        }),
+        h('span', { class: 'tx-balance', text: '잔액 ' + fmtWon(balance) })
+      ])
+    ]);
+  }
+
+  function openingRow(club) {
+    return h('div', { class: 'tx-row is-opening' }, [
+      h('div', { class: 'tx-main' }, [
+        h('span', { class: 'tx-date', text: club.openingDate ? fmtDot(club.openingDate) : '시작' }),
+        h('span', { class: 'tx-title', text: '이월 잔액' })
+      ]),
+      h('div', { class: 'tx-amt' }, [
+        h('span', { class: 'tx-amount is-income', text: fmtWon(club.openingBalance) }),
+        h('span', { class: 'tx-balance', text: '잔액 ' + fmtWon(club.openingBalance) })
+      ])
+    ]);
+  }
+
+  function renderList() {
+    var club = activeClub();
+    var list = $('tx-list');
+    if (!club || !list) return;
+    var range = periodRange();
+    var all = clubTxs(club.id);
+    var balances = computeBalances(club, all);
+    var rows = all.filter(function (t) { return inRange(t.date, range); });
+    var isStatic = runtime.view !== 'admin';
+
+    clear(list);
+    for (var i = rows.length - 1; i >= 0; i--) {
+      list.appendChild(txRow(club, rows[i], balances[rows[i].id], isStatic));
+    }
+
+    var showOpening = Number(club.openingBalance || 0) !== 0 &&
+      (!range.from || !club.openingDate || club.openingDate >= range.from) &&
+      (!range.to || !club.openingDate || club.openingDate <= range.to);
+    if (showOpening) list.appendChild(openingRow(club));
+
+    var count = $('list-count');
+    if (count) count.textContent = rows.length ? (rows.length + (showOpening ? 1 : 0)) + '건' : (showOpening ? '1건' : '');
+
+    var hasAnything = rows.length > 0 || showOpening;
+    var empty = $('empty-state');
+    if (empty) empty.hidden = hasAnything;
+    list.hidden = !hasAnything;
+  }
+
+  function setNotice(n) {
+    runtime.notice = n;
+    runtime.noticeDismissed = false;
+    renderNotice();
+  }
+
+  function clearNotice() {
+    runtime.notice = null;
+    renderNotice();
+  }
+
+  function renderNotice() {
+    var box = $('notice');
+    var text = $('notice-text');
+    var action = $('notice-action');
+    if (!box) return;
+    if (!runtime.notice || runtime.noticeDismissed) {
+      box.hidden = true;
+      if (action) action.hidden = true;
+      return;
+    }
+    box.hidden = false;
+    box.className = 'notice' + (runtime.notice.kind === 'error' ? ' is-error' : runtime.notice.kind === 'info' ? ' is-info' : '');
+    text.textContent = runtime.notice.text;
+    if (runtime.notice.action) {
+      action.hidden = false;
+      action.textContent = runtime.notice.action.label;
+      action.onclick = function () { runtime.notice.action.run(); };
+    } else {
+      action.hidden = true;
+      action.onclick = null;
+    }
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 7. 모달
+   * ------------------------------------------------------------------------- */
+  function openModal(id) {
+    var m = $(id);
+    if (m) m.hidden = false;
+  }
+
+  function closeModal(id) {
+    var m = $(id);
+    if (m) m.hidden = true;
+  }
+
+  function closeAllModals() {
+    closeModal('modal-tx'); closeModal('modal-settings'); closeModal('modal-club');
+    closeModal('modal-share'); closeModal('modal-pin');
+  }
+
+  function setTxType(type) {
+    runtime.txType = type;
+    var seg = $('tx-type-seg');
+    if (!seg) return;
+    for (var i = 0; i < seg.childNodes.length; i++) {
+      var b = seg.childNodes[i];
+      if (!b.getAttribute) continue;
+      b.classList.toggle('is-active', b.getAttribute('data-type') === type);
+    }
+  }
+
+  function openTxModal(id) {
+    if (!activeClub()) return;
+    runtime.editingTx = id || null;
+    $('tx-modal-title').textContent = id ? '내역 수정' : '내역 추가';
+    $('btn-tx-delete').hidden = !id;
+    $('tx-error').hidden = true;
+
+    if (id) {
+      var found = null;
+      for (var i = 0; i < state.txs.length; i++) if (state.txs[i].id === id) found = state.txs[i];
+      if (!found) { toast('내역을 찾을 수 없습니다.'); return; }
+      setTxType(found.type);
+      $('tx-date').value = found.date;
+      $('tx-title').value = found.title;
+      $('tx-amount').value = String(found.amount);
+    } else {
+      setTxType('expense');
+      $('tx-date').value = todayISO();
+      $('tx-title').value = '';
+      $('tx-amount').value = '';
+    }
+    openModal('modal-tx');
+  }
+
+  function txError(msg) {
+    var e = $('tx-error');
+    e.textContent = msg;
+    e.hidden = false;
+  }
+
+  /* 읽기 전용(클라우드 연결됐지만 로그인 안 됨) 상태에서 저장을 막는다.
+     로컬에만 저장되면 새로고침 때 사라져 사용자가 당황하기 때문. */
+  function canWrite() {
+    if (runtime.mode === 'cloud' && !runtime.token) {
+      toast('관리자 로그인이 필요합니다.');
+      setNotice({
+        kind: 'info',
+        text: '지금은 읽기 전용입니다. 내역을 저장하려면 설정에서 관리자로 로그인하세요.',
+        action: { label: '설정', run: openSettings }
+      });
+      return false;
+    }
+    return true;
+  }
+
+  function saveTx() {
+    var club = activeClub();
+    if (!club) return;
+    var date = $('tx-date').value;
+    var title = ($('tx-title').value || '').trim();
+    var amount = Math.round(num($('tx-amount').value));
+
+    if (!date || !parseISO(date)) return txError('날짜를 입력하세요.');
+    if (!title) return txError('내용을 입력하세요.');
+    if (!amount || amount <= 0) return txError('금액을 0보다 크게 입력하세요.');
+    if (!canWrite()) return;
+
+    if (runtime.editingTx) {
+      var tx = null;
+      for (var i = 0; i < state.txs.length; i++) if (state.txs[i].id === runtime.editingTx) tx = state.txs[i];
+      if (!tx) return;
+      tx.date = date; tx.title = title; tx.type = runtime.txType; tx.amount = amount;
+      push('update', { table: 'transactions', id: tx.id, row: txToRow(tx) });
+      toast('수정했습니다.');
+    } else {
+      var now = new Date().toISOString();
+      var newTx = {
+        id: uuid(), clubId: club.id, date: date, title: title,
+        type: runtime.txType, amount: amount, createdAt: now
+      };
+      state.txs.push(newTx);
+      push('insert', { table: 'transactions', row: txToRow(newTx) });
+      toast('내역을 추가했습니다.');
+    }
+    saveState();
+    closeModal('modal-tx');
+    renderAll();
+  }
+
+  function deleteTx() {
+    var id = runtime.editingTx;
+    if (!id) return;
+    if (!canWrite()) return;
+    if (!window.confirm('이 내역을 삭제할까요?\n삭제하면 되돌릴 수 없습니다.')) return;
+    state.txs = state.txs.filter(function (t) { return t.id !== id; });
+    push('delete', { table: 'transactions', id: id });
+    saveState();
+    closeModal('modal-tx');
+    renderAll();
+    toast('삭제했습니다.');
+  }
+
+  /* ----- 모임 ----- */
+  function openClubModal(id) {
+    runtime.editingClub = id || null;
+    $('club-modal-title').textContent = id ? '모임 수정' : '모임 추가';
+    $('btn-club-delete').hidden = !id;
+    $('club-error').hidden = true;
+    if (id) {
+      var club = null;
+      for (var i = 0; i < state.clubs.length; i++) if (state.clubs[i].id === id) club = state.clubs[i];
+      if (!club) return;
+      $('club-name').value = club.name;
+      $('club-opening').value = String(club.openingBalance || 0);
+      $('club-opening-date').value = club.openingDate || todayISO();
+    } else {
+      $('club-name').value = '';
+      $('club-opening').value = '0';
+      $('club-opening-date').value = todayISO();
+    }
+    openModal('modal-club');
+  }
+
+  function saveClub() {
+    var name = ($('club-name').value || '').trim();
+    var opening = Math.round(num($('club-opening').value));
+    var openingDate = $('club-opening-date').value || todayISO();
+    var err = $('club-error');
+    if (!name) { err.textContent = '모임 이름을 입력하세요.'; err.hidden = false; return; }
+    if (!canWrite()) return;
+
+    if (runtime.editingClub) {
+      var club = null;
+      for (var i = 0; i < state.clubs.length; i++) if (state.clubs[i].id === runtime.editingClub) club = state.clubs[i];
+      if (!club) return;
+      club.name = name;
+      club.openingBalance = opening;
+      club.openingDate = openingDate;
+      push('update', { table: 'clubs', id: club.id, row: clubToRow(club) });
+      toast('모임 정보를 수정했습니다.');
+    } else {
+      var newClub = {
+        id: uuid(), slug: 'club-' + shortSlug(), name: name, color: PALETTE[state.clubs.length % PALETTE.length],
+        openingBalance: opening, openingDate: openingDate, shareToken: shortSlug(),
+        createdAt: new Date().toISOString()
+      };
+      state.clubs.push(newClub);
+      state.activeClubId = newClub.id;
+      push('insert', { table: 'clubs', row: clubToRow(newClub) });
+      toast('모임을 추가했습니다.');
+    }
+    saveState();
+    closeModal('modal-club');
+    renderAll();
+  }
+
+  function deleteClub() {
+    var id = runtime.editingClub;
+    if (!id) return;
+    var club = null;
+    for (var i = 0; i < state.clubs.length; i++) if (state.clubs[i].id === id) club = state.clubs[i];
+    if (!club) return;
+    var n = state.txs.filter(function (t) { return t.clubId === id; }).length;
+    if (!canWrite()) return;
+    if (!window.confirm('"' + club.name + '" 모임과 내역 ' + n + '건을 삭제할까요?')) return;
+    state.clubs = state.clubs.filter(function (c) { return c.id !== id; });
+    state.txs = state.txs.filter(function (t) { return t.clubId !== id; });
+    push('delete', { table: 'clubs', id: id });
+    ensureActiveClub();
+    saveState();
+    closeModal('modal-club');
+    renderAll();
+    toast('모임을 삭제했습니다.');
+  }
+
+  /* ----- 공유 ----- */
+  function shareUrl(club) {
+    var loc = window.location;
+    var href = loc.href || '';
+    var base = href.split('#')[0].split('?')[0];
+    if (!base) base = 'index.html';
+    return base + '?share=' + encodeURIComponent(club.slug);
+  }
+
+  function buildShareText(club, range) {
+    var s = summaryFor(club, range);
+    var rows = periodTxs(club, range);
+    var lines = [];
+    lines.push('[' + club.name + '] 수입/지출 장부');
+    lines.push(range.from ? fmtDot(range.from) + ' ~ ' + fmtDot(range.to) : '전체 기간');
+    lines.push('');
+    lines.push('잔액 ' + fmtWon(s.balance));
+    lines.push('수입 ' + fmtWon(s.income) + ' / 지출 ' + fmtWon(s.expense));
+    if (rows.length) {
+      lines.push('');
+      lines.push('최근 내역');
+      for (var i = rows.length - 1; i >= 0 && i >= rows.length - 8; i--) {
+        var t = rows[i];
+        lines.push(fmtShort(t.date) + ' ' + (t.title || '내용 없음') + ' ' +
+          (t.type === 'income' ? '+' : '-') + fmtNum(t.amount) + '원');
+      }
+      if (rows.length > 8) lines.push('…외 ' + (rows.length - 8) + '건');
+    }
+    lines.push('');
+    lines.push('전체 보기 ' + shareUrl(club));
+    return lines.join('\n');
+  }
+
+  function openShare() {
+    var club = activeClub();
+    if (!club) return;
+    var range = periodRange();
+    $('share-text').value = buildShareText(club, range);
+    $('share-url').value = shareUrl(club);
+    var hint = $('share-hint');
+    if (runtime.mode === 'cloud') {
+      hint.textContent = '이 링크를 받은 회원은 로그인 없이 읽기 전용으로 장부를 볼 수 있습니다.';
+    } else {
+      hint.textContent = '지금은 이 기기 저장 모드예요. 다른 사람 폰에서 링크를 열면 장부가 비어 보입니다. 설정에서 Supabase를 연결하면 회원 폰에서도 같은 장부가 보입니다.';
+    }
+    openModal('modal-share');
+  }
+
+  /* ----- PIN ----- */
+  function checkPin() {
+    var v = ($('pin-input').value || '').trim();
+    if (v === (cfg.pin || DEFAULT_PIN)) {
+      $('pin-error').hidden = true;
+      $('pin-input').value = '';
+      closeModal('modal-pin');
+      runtime.view = 'admin';
+      renderAll();
+      toast('관리자 화면으로 전환했습니다.');
+    } else {
+      $('pin-error').hidden = false;
+    }
+  }
+
+  /* ----- 설정 ----- */
+  function openSettings() {
+    if (!state) return;
+    $('set-url').value = cfg.url || '';
+    $('set-key').value = cfg.key || '';
+    $('set-email').value = cfg.email || '';
+    $('set-password').value = '';
+    $('set-pin').value = cfg.pin || DEFAULT_PIN;
+    renderClubManage();
+    renderCloudStatus();
+    openModal('modal-settings');
+  }
+
+  function renderCloudStatus() {
+    var el = $('cloud-status');
+    if (!el) return;
+    if (!cfg.url || !cfg.key) {
+      el.textContent = '로컬 저장 (이 기기만)';
+      el.className = 'status-pill is-off';
+    } else if (runtime.mode === 'cloud' && runtime.token) {
+      el.textContent = '클라우드 연결 · 관리자';
+      el.className = 'status-pill is-ok';
+    } else if (runtime.mode === 'cloud') {
+      el.textContent = '클라우드 연결 · 읽기 전용';
+      el.className = 'status-pill is-warn';
+    } else {
+      el.textContent = '연결 안 됨';
+      el.className = 'status-pill is-warn';
+    }
+  }
+
+  function renderClubManage() {
+    var box = $('club-manage');
+    if (!box) return;
+    clear(box);
+    for (var i = 0; i < state.clubs.length; i++) {
+      (function (club) {
+        var n = state.txs.filter(function (t) { return t.clubId === club.id; }).length;
+        var row = h('div', { class: 'club-manage-row' }, [
+          h('span', { class: 'club-dot', style: 'background:' + club.color }),
+          h('span', { class: 'club-manage-name', text: club.name }),
+          h('span', { class: 'club-manage-meta', text: n + '건' }),
+          h('button', {
+            class: 'btn btn-ghost btn-sm', type: 'button', text: '수정',
+            onclick: function () { closeModal('modal-settings'); openClubModal(club.id); }
+          })
+        ]);
+        box.appendChild(row);
+      })(state.clubs[i]);
+    }
+  }
+
+  function saveSettings() {
+    var url = ($('set-url').value || '').trim().replace(/\/+$/, '');
+    var key = ($('set-key').value || '').trim();
+    var email = ($('set-email').value || '').trim();
+    var pin = ($('set-pin').value || '').trim();
+    if (pin && !/^\d{4}$/.test(pin)) { toast('PIN은 숫자 4자리로 입력하세요.'); return; }
+
+    var changed = (url !== cfg.url) || (key !== cfg.key);
+    cfg.url = url;
+    cfg.key = key;
+    cfg.email = email;
+    cfg.pin = pin || DEFAULT_PIN;
+    saveConfig();
+
+    if (!url || !key) {
+      runtime.mode = 'local';
+      clearNotice();
+      setNotice({ kind: 'info', text: '이 기기 저장 모드입니다. 폰을 바꾸거나 회원과 공유하려면 Supabase를 연결하세요.', action: null });
+      renderAll();
+      toast('저장했습니다.');
+      return;
+    }
+    if (changed) {
+      cloudConnect().then(function () {
+        renderAll();
+        renderCloudStatus();
+        toast(runtime.mode === 'cloud' ? 'Supabase에 연결했습니다.' : '연결하지 못했습니다. 주소와 키를 확인하세요.');
+      });
+    } else {
+      toast('저장했습니다.');
+      renderAll();
+    }
+    renderCloudStatus();
+  }
+
+  /* ----- 백업 ----- */
+  function exportJson() {
+    var payload = {
+      app: 'moim-ledger', version: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      clubs: state.clubs, transactions: state.txs
+    };
+    download('모임가계부_백업_' + todayISO() + '.json', JSON.stringify(payload, null, 2), 'application/json');
+    toast('JSON 백업 파일을 만들었습니다.');
+  }
+
+  function csvCell(v) {
+    var s = String(v == null ? '' : v);
+    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function buildCsv(club) {
+    var all = clubTxs(club.id);
+    var balances = computeBalances(club, all);
+    var lines = ['날짜,구분,내용,금액,거래후잔액'];
+    if (Number(club.openingBalance || 0) !== 0) {
+      lines.push([club.openingDate || '', '이월', '이월 잔액', club.openingBalance, club.openingBalance]
+        .map(csvCell).join(','));
+    }
+    for (var i = 0; i < all.length; i++) {
+      var t = all[i];
+      lines.push([t.date, t.type === 'income' ? '수입' : '지출', t.title, t.amount, balances[t.id]]
+        .map(csvCell).join(','));
+    }
+    return '\ufeff' + lines.join('\r\n');
+  }
+
+  function exportCsv() {
+    var club = activeClub();
+    if (!club) return;
+    download('모임가계부_' + club.name + '_' + todayISO() + '.csv', buildCsv(club), 'text/csv');
+    toast('CSV 파일을 만들었습니다.');
+  }
+
+  function parseCsv(text) {
+    var rows = [];
+    var row = [];
+    var cell = '';
+    var inQuotes = false;
+    for (var i = 0; i < text.length; i++) {
+      var ch = text.charAt(i);
+      if (inQuotes) {
+        if (ch === '"') {
+          if (text.charAt(i + 1) === '"') { cell += '"'; i++; }
+          else inQuotes = false;
+        } else cell += ch;
+      } else if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        row.push(cell); cell = '';
+      } else if (ch === '\n') {
+        row.push(cell); cell = ''; rows.push(row); row = [];
+      } else if (ch === '\r') {
+        /* skip */
+      } else {
+        cell += ch;
+      }
+    }
+    if (cell.length || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(function (r) { return r.length && r.join('').trim() !== ''; });
+  }
+
+  function normDate(v) {
+    var s = String(v || '').trim().replace(/[./]/g, '-');
+    var m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (!m) return null;
+    return m[1] + '-' + pad2(Number(m[2])) + '-' + pad2(Number(m[3]));
+  }
+
+  function importJson(text) {
+    var data = JSON.parse(text);
+    var clubs = data.clubs || (data.state && data.state.clubs);
+    var txs = data.transactions || data.txs || (data.state && data.state.txs);
+    if (!Array.isArray(clubs) || !Array.isArray(txs)) throw new Error('clubs / transactions 형식이 아닙니다.');
+    if (!window.confirm('현재 장부를 가져온 파일 내용으로 바꿀까요? (모임 ' + clubs.length + '개, 내역 ' + txs.length + '건)')) return;
+    var st = normalizeState({ clubs: clubs, txs: txs, activeClubId: null, period: state.period, queue: [] });
+    state.clubs = st.clubs;
+    state.txs = st.txs;
+    state.seededAt = '';
+    state.activeClubId = st.clubs.length ? st.clubs[0].id : null;
+    ensureActiveClub();
+    saveState();
+    renderAll();
+    toast('가져왔습니다.');
+    if (runtime.mode === 'cloud') pushAllLocal();
+  }
+
+  function importCsv(text) {
+    var club = activeClub();
+    if (!club) return;
+    var rows = parseCsv(text.replace(/^\ufeff/, ''));
+    if (!rows.length) throw new Error('내용이 비어 있습니다.');
+    var header = rows[0].map(function (c) { return String(c).trim(); });
+    var map = { date: -1, type: -1, title: -1, amount: -1 };
+    for (var i = 0; i < header.length; i++) {
+      var k = header[i];
+      if (/날짜|date/i.test(k)) map.date = i;
+      else if (/구분|type/i.test(k)) map.type = i;
+      else if (/내용|적요|title|memo/i.test(k)) map.title = i;
+      else if (/금액|amount/i.test(k)) map.amount = i;
+    }
+    var start = 1;
+    if (map.date < 0 || map.amount < 0) {
+      // 헤더가 없으면 날짜,구분,내용,금액 순서로 간주
+      map = { date: 0, type: 1, title: 2, amount: 3 };
+      start = 0;
+    }
+    var added = 0;
+    var now = new Date().toISOString();
+    for (var r = start; r < rows.length; r++) {
+      var cells = rows[r];
+      var date = normDate(cells[map.date]);
+      var amount = Math.abs(Math.round(num(cells[map.amount])));
+      if (!date || !amount) continue;
+      var typeRaw = String(cells[map.type] || '').trim();
+      var type = /수입|income|입금|\+/.test(typeRaw) ? 'income' : 'expense';
+      var title = String(map.title >= 0 && cells[map.title] != null ? cells[map.title] : '').trim() || '가져온 내역';
+      var tx = { id: uuid(), clubId: club.id, date: date, title: title, type: type, amount: amount, createdAt: now };
+      state.txs.push(tx);
+      push('insert', { table: 'transactions', row: txToRow(tx) });
+      added++;
+    }
+    saveState();
+    renderAll();
+    toast(added + '건을 가져왔습니다.');
+  }
+
+  function importFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var text = String(reader.result || '');
+        if (/^\s*[\[{]/.test(text)) importJson(text);
+        else importCsv(text);
+      } catch (e) {
+        toast('가져오기 실패: ' + (e && e.message ? e.message : '형식을 확인하세요'));
+      }
+    };
+    reader.onerror = function () { toast('파일을 읽지 못했습니다.'); };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  function resetClear() {
+    var club = activeClub();
+    if (!club) return;
+    if (!canWrite()) return;
+    if (!window.confirm('"' + club.name + '"의 내역을 모두 지울까요? (모임과 이월 잔액은 남습니다)')) return;
+    var ids = [];
+    state.txs.forEach(function (t) { if (t.clubId === club.id) ids.push(t.id); });
+    state.txs = state.txs.filter(function (t) { return t.clubId !== club.id; });
+    state.seededAt = '';
+    for (var i = 0; i < ids.length; i++) push('delete', { table: 'transactions', id: ids[i] });
+    saveState();
+    renderAll();
+    toast('내역을 비웠습니다.');
+  }
+
+  function resetSample() {
+    var extra = runtime.mode === 'cloud' ? '\n(클라우드에 이미 올린 데이터는 바뀌지 않습니다)' : '';
+    if (!window.confirm('지금 장부를 지우고 샘플 데이터로 되돌릴까요?' + extra)) return;
+    state = seedState();
+    saveState();
+    renderAll();
+    toast('샘플 데이터로 되돌렸습니다.');
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 8. 이벤트 · 시작
+   * ------------------------------------------------------------------------- */
+  function detectView() {
+    var loc = window.location;
+    var search = (loc && loc.search) || '';
+    var m = search.match(/[?&]share=([^&]+)/);
+    if (!m) return { view: 'admin', slug: null };
+    try { return { view: 'share', slug: decodeURIComponent(m[1]) }; } catch (e) { return { view: 'share', slug: m[1] }; }
+  }
+
+  function bindEvents() {
+    if (runtime.bound) return;
+    runtime.bound = true;
+    function on(id, ev, fn) {
+      var el = $(id);
+      if (el) el.addEventListener(ev, fn);
+    }
+
+    on('btn-share', 'click', openShare);
+    on('btn-settings', 'click', openSettings);
+    on('btn-add', 'click', function () { openTxModal(null); });
+    on('btn-admin-unlock', 'click', function () { $('pin-error').hidden = true; $('pin-input').value = ''; openModal('modal-pin'); });
+    on('btn-pin-ok', 'click', checkPin);
+    on('notice-close', 'click', function () {
+      runtime.noticeDismissed = true;
+      renderNotice();
+    });
+    on('period-toggle', 'click', function () {
+      runtime.periodOpen = !runtime.periodOpen;
+      renderPeriod();
+    });
+    on('btn-apply-range', 'click', function () {
+      var from = $('range-from').value;
+      var to = $('range-to').value;
+      if (from && to && from > to) { toast('시작일이 종료일보다 늦습니다.'); return; }
+      state.period = { kind: 'custom', from: from || '', to: to || '' };
+      saveState();
+      renderAll();
+    });
+    on('btn-tx-save', 'click', saveTx);
+    on('btn-tx-delete', 'click', deleteTx);
+    on('btn-club-save', 'click', saveClub);
+    on('btn-club-delete', 'click', deleteClub);
+    on('btn-save-settings', 'click', saveSettings);
+    on('btn-cloud-login', 'click', cloudLogin);
+    on('btn-export-json', 'click', exportJson);
+    on('btn-export-csv', 'click', exportCsv);
+    on('import-file', 'change', function (e) {
+      var files = e.target.files;
+      if (files && files.length) importFile(files[0]);
+      e.target.value = '';
+    });
+    on('btn-reset-clear', 'click', resetClear);
+    on('btn-reset-sample', 'click', resetSample);
+    on('btn-add-club', 'click', function () { closeModal('modal-settings'); openClubModal(null); });
+    on('btn-edit-club', 'click', function () {
+      var club = activeClub();
+      if (club) { closeModal('modal-settings'); openClubModal(club.id); }
+    });
+    on('btn-copy-text', 'click', function () {
+      copyText($('share-text').value).then(function (ok) {
+        toast(ok ? '요약을 복사했습니다. 카톡에 붙여넣으세요.' : '복사가 막혔습니다. 미리보기를 길게 눌러 복사하세요.');
+      });
+    });
+    on('btn-copy-url', 'click', function () {
+      copyText($('share-url').value).then(function (ok) {
+        toast(ok ? '링크를 복사했습니다.' : '복사가 막혔습니다. 주소를 길게 눌러 복사하세요.');
+      });
+    });
+    on('btn-share-sheet', 'click', function () {
+      var text = $('share-text').value;
+      if (navigator.share) {
+        navigator.share({ title: '모임가계부', text: text }).catch(function () {});
+      } else {
+        toast('이 브라우저는 공유 시트가 없습니다. 요약을 복사해 붙여넣으세요.');
+      }
+    });
+    on('btn-open-share', 'click', function () {
+      var url = $('share-url').value;
+      if (window.open) window.open(url, '_blank');
+    });
+
+    var seg = $('tx-type-seg');
+    if (seg) {
+      seg.addEventListener('click', function (e) {
+        var t = e.target;
+        while (t && t !== seg) {
+          if (t.getAttribute && t.getAttribute('data-type')) { setTxType(t.getAttribute('data-type')); return; }
+          t = t.parentNode;
+        }
+      });
+    }
+
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      while (t && t !== document && t.getAttribute) {
+        var close = t.getAttribute('data-close');
+        if (close) { closeModal(close); return; }
+        t = t.parentNode;
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeAllModals();
+    });
+  }
+
+  async function boot() {
+    loadConfig();
+    var route = detectView();
+    runtime.view = route.view;
+
+    loadLocal(route.view === 'admin');
+
+    if (route.view === 'share' && route.slug) {
+      var found = null;
+      for (var i = 0; i < state.clubs.length; i++) {
+        if (state.clubs[i].slug === route.slug) found = state.clubs[i];
+      }
+      if (found) state.activeClubId = found.id;
+    }
+
+    if (cfg.url && cfg.key) {
+      await cloudConnect();
+    } else if (route.view === 'share' && !state.txs.length) {
+      setNotice({
+        kind: 'info',
+        text: '공유 링크로 열렸지만 이 기기에는 장부 데이터가 없습니다. 총무가 설정에서 Supabase를 연결하면 회원 폰에서도 같은 장부가 보입니다.',
+        action: null
+      });
+    } else if (route.view === 'admin') {
+      setNotice({
+        kind: 'info',
+        text: state.seededAt
+          ? '샘플로 시작했어요. 배드민턴은 11/14 실측 내역, 골프는 잔액만 인계했습니다. 실제로 쓰기 전에 [내역 전체 비우기]하세요.'
+          : '이 기기 저장 모드입니다. 회원과 공유하려면 설정에서 Supabase를 연결하세요.',
+        action: { label: '설정 열기', run: openSettings }
+      });
+    }
+
+    bindEvents();
+    renderAll();
+    runtime.booted = true;
+  }
+
+  /* 디버깅·확장용 (README 참고) */
+  window.ML = {
+    version: APP_VERSION,
+    getState: function () { return state; },
+    getConfig: function () { return cfg; },
+    getRuntime: function () { return runtime; },
+    periodRange: periodRange,
+    summaryFor: summaryFor,
+    clubTxs: clubTxs,
+    computeBalances: computeBalances,
+    buildShareText: buildShareText,
+    buildCsv: buildCsv,
+    parseCsv: parseCsv,
+    importCsv: importCsv,
+    importJson: importJson,
+    shareUrl: shareUrl,
+    activeClub: activeClub,
+    fmtNum: fmtNum,
+    saveTx: saveTx,
+    openTxModal: openTxModal,
+    renderAll: renderAll,
+    boot: boot
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { boot(); });
+  } else {
+    boot();
+  }
+})();
+
+</script>
+</body>
+</html>
